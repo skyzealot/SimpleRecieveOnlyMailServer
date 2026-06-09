@@ -191,12 +191,12 @@ hasn't propagated yet. Re-check step 1 and try again.
 ## 4. Create the mailbox user
 
 Every email that arrives lands in a Linux user's home directory. We'll
-create a user called `sky-user` for that purpose.
+create a user called `me` for that purpose.
 
 **[VPS]**
 ```bash
-adduser --disabled-password --gecos "" sky-user
-passwd sky-user
+adduser --disabled-password --gecos "" me
+passwd me
 ```
 
 - `--disabled-password` skips creating a Linux login password — this user
@@ -213,11 +213,11 @@ Confirm:
 
 **[VPS]**
 ```bash
-ls -ld /home/sky-user
+ls -ld /home/me
 ```
 
 You should see something like
-`drwxr-x--- … sky-user sky-user … /home/sky-user`.
+`drwxr-x--- … me me … /home/me`.
 
 ---
 
@@ -281,7 +281,7 @@ smtpd_relay_restrictions =
     permit_mynetworks
     reject_unauth_destination
 
-# Catch-all: every address @your.domain → sky-user
+# Catch-all: every address @your.domain → me
 virtual_alias_domains = your.domain
 virtual_alias_maps = hash:/etc/postfix/virtual
 
@@ -305,7 +305,7 @@ EOF
 > **Critical detail:** `mydestination = $myhostname, localhost` includes
 > `mail.your.domain` as a local destination. Combined with
 > `/etc/mailname = mail.your.domain` from step 2.2, this is what makes
-> `sky-user` (the bare username from the catch-all map below) resolve to
+> `me` (the bare username from the catch-all map below) resolve to
 > a deliverable local mailbox instead of looping back through the virtual
 > table.
 
@@ -313,11 +313,11 @@ EOF
 
 **[VPS]**
 ```bash
-echo "@your.domain    sky-user" > /etc/postfix/virtual
+echo "@your.domain    me" > /etc/postfix/virtual
 ```
 
 > **Critical detail:** the right-hand side must be a **bare username**
-> (`sky-user`), **not** `sky-user@your.domain`. If you put the domain on the
+> (`me`), **not** `me@your.domain`. If you put the domain on the
 > right, Postfix re-resolves the result through the virtual table again,
 > can't find an entry, and bounces every message.
 
@@ -344,7 +344,7 @@ You should now see two files: `virtual` and `virtual.db`.
 postmap -q "@your.domain" /etc/postfix/virtual
 ```
 
-This should print exactly `sky-user`. If it prints `sky-user@your.domain`,
+This should print exactly `me`. If it prints `me@your.domain`,
 re-run step 5.4 — your text file has the wrong content.
 
 ### 5.7 — Check the config is valid
@@ -392,7 +392,7 @@ The catch-all means everything already works. If you ever want
 ```
 billing@your.domain    other-user
 support@your.domain    other-user
-@your.domain           sky-user
+@your.domain           me
 ```
 
 Specific addresses must come **above** the wildcard `@your.domain` line —
@@ -600,7 +600,7 @@ re-check whichever step matches the error.
 
 **[VPS]**
 ```bash
-ls /home/sky-user/Maildir/new/
+ls /home/me/Maildir/new/
 ```
 
 Each file is one delivered email.
@@ -612,7 +612,7 @@ In Thunderbird / Apple Mail / your phone's mail app, add a new account:
 - **Account type:** IMAP
 - **Server / hostname:** `mail.your.domain`
 - **Port:** `993` with SSL/TLS (preferred), or `143` with STARTTLS
-- **Username:** `sky-user`
+- **Username:** `me`
 - **Password:** the one you set in step 4
 - **Outgoing (SMTP) server:** leave blank or disabled — this server
   doesn't send
@@ -627,7 +627,7 @@ If you want to peek at messages without an email app:
 **[VPS]**
 ```bash
 apt -y install mutt
-sudo -u sky-user mutt -f /home/sky-user/Maildir/
+sudo -u me mutt -f /home/me/Maildir/
 ```
 
 Inside mutt: arrows to navigate, `Enter` to read, `q` to quit, `?` for
@@ -651,7 +651,7 @@ Common patterns and what they mean:
 
 | Log says | Meaning | Fix |
 | --- | --- | --- |
-| `status=sent (delivered to maildir)` | It worked | Check `ls /home/sky-user/Maildir/new/` |
+| `status=sent (delivered to maildir)` | It worked | Check `ls /home/me/Maildir/new/` |
 | `status=bounced (User unknown in virtual alias table)` | Virtual map is broken | Re-check steps 2.2, 5.3, 5.4 — particularly that `/etc/mailname` is `mail.your.domain` and `mydestination` includes `$myhostname` |
 | `status=deferred` | Temporarily stuck — log will say why | Read the message; usually transient |
 | No entries about your test email at all | Mail isn't reaching the server | DNS or port-25 problem (see below) |
@@ -734,7 +734,7 @@ systemctl restart dovecot
   problem for sending mail, not receiving it. Inbound port 25 is what
   matters here and is open by default.
 - **Backups.** Every email lives as a file under
-  `/home/sky-user/Maildir/`. If you care about retention, snapshot or
+  `/home/me/Maildir/`. If you care about retention, snapshot or
   rsync that directory somewhere else periodically.
 - **The PTR record matters more than you'd think.** Until Namecheap sets
   it, expect Gmail to defer or reject incoming mail. It's not a hard
@@ -742,5 +742,5 @@ systemctl restart dovecot
   "sometimes mysteriously doesn't."
 - **`/etc/mailname` is the FQDN, not the bare domain.** This trips up
   most catch-all setups. If you ever see "User unknown in virtual alias
-  table" with `to=<sky-user@your.domain>` in the log, this is almost
+  table" with `to=<me@your.domain>` in the log, this is almost
   certainly the cause.
